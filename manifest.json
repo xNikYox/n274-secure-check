@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "n274 Secure Check",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Prüft die aktuelle Website: Sicherheit (HTTPS, Zertifikat, Header, Cookies, Skripte), Leistung, SEO und Technik – alles lokal im Browser.",
   "author": "xNikYox",
   "icons": {
@@ -43,7 +43,8 @@
         "required": [
           "none"
         ]
-      }
+      },
+      "update_url": "https://raw.githubusercontent.com/xNikYox/n274-secure-check/main/updates.json"
     }
   },
   "content_scripts": [
