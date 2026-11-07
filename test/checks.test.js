@@ -126,7 +126,7 @@ test("Leistung und SEO bei schwacher Seite", () => {
 
 test("Markdown-Bericht enthält Note, Probleme und Tipps", () => {
   const md = C.toMarkdown(C.analyze(base({ headers: H({}) })));
-  assert.match(md, /^# Seitenprüfer: example\.de/);
+  assert.match(md, /^# n274 Secure Check: example\.de/);
   assert.match(md, /\*\*Sicherheit: [A-F]/);
   assert.match(md, /⚠️ \*\*Kein HSTS/);
   assert.match(md, /👉 Header setzen: Strict-Transport-Security/);

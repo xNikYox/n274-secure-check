@@ -1,4 +1,4 @@
-// Seitenprüfer – Hintergrund: merkt sich je Tab Header, Zertifikat, Weiterleitungen und Anfragen der geladenen Seite
+// n274 Secure Check – Hintergrund: merkt sich je Tab Header, Zertifikat, Weiterleitungen und Anfragen der geladenen Seite
 // und erstellt auf Abruf den Bericht. Alles bleibt lokal; abgerufen wird nur die geprüfte Seite selbst.
 "use strict";
 

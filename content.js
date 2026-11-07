@@ -1,4 +1,4 @@
-// Seitenprüfer – liest die geöffnete Seite aus (nur lesen, nichts ändern). Wird bei Bedarf eingefügt;
+// n274 Secure Check – liest die geöffnete Seite aus (nur lesen, nichts ändern). Wird bei Bedarf eingefügt;
 // das Ergebnis (Promise) geht an das Hintergrundskript.
 (async () => {
   const w = window.wrappedJSObject || window; // Firefox: Zugriff auf die Variablen der Seite (für Bibliotheks-Versionen)

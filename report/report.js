@@ -38,7 +38,7 @@ function render() {
       ${[["all", "Alle"], ["issues", `Probleme (${r.counts.bad + r.counts.warn})`], ["bad", `Kritisch (${r.counts.bad})`], ["ok", `In Ordnung (${r.counts.ok})`]].map(([k, l]) => `<button data-f="${k}" class="${filter === k ? "on" : ""}">${l}</button>`).join("")}
     </div>
     ${sections || `<p class="muted">Nichts in dieser Auswahl.</p>`}
-    <p class="note">Der Seitenprüfer schaut sich nur an, was die Seite ausliefert (passiv). Er ersetzt keinen Penetrationstest: Lücken in der Server-Logik, Datenbank oder Anmeldung findet er nicht. Bibliotheks-Lücken stammen aus einer Liste im Addon.</p>`;
+    <p class="note">n274 Secure Check schaut sich nur an, was die Seite ausliefert (passiv) und ersetzt keinen Penetrationstest: Lücken in der Server-Logik, Datenbank oder Anmeldung findet es nicht. Bibliotheks-Lücken stammen aus einer Liste im Addon.</p>`;
   for (const b of app.querySelectorAll("[data-f]")) b.onclick = () => ((filter = b.dataset.f), render());
   document.getElementById("copy").onclick = async (e) => {
     await navigator.clipboard.writeText(Checks.toMarkdown(r));
@@ -47,7 +47,7 @@ function render() {
   document.getElementById("json").onclick = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(r, null, 2)], { type: "application/json" }));
-    a.download = `seitenpruefer-${r.host}-${new Date(r.at).toISOString().slice(0, 10)}.json`;
+    a.download = `n274-secure-check-${r.host}-${new Date(r.at).toISOString().slice(0, 10)}.json`;
     a.click();
   };
 }
@@ -60,6 +60,6 @@ function render() {
     return;
   }
   report = res.report;
-  document.title = `Seitenprüfer – ${report.host} (${report.grade})`;
+  document.title = `n274 Secure Check – ${report.host} (${report.grade})`;
   render();
 })();

@@ -1,4 +1,4 @@
-# Seitenprüfer (Firefox-Addon)
+# n274 Secure Check (Firefox-Addon)
 
 Prüft die Website im aktuellen Tab – passiv und komplett lokal:
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "Seitenprüfer",
-  "version": "1.0.0",
+  "name": "n274 Secure Check",
+  "version": "1.0.1",
   "description": "Prüft die aktuelle Website: Sicherheit (HTTPS, Zertifikat, Header, Cookies, Skripte), Leistung, SEO und Technik – alles lokal im Browser.",
   "author": "xNikYox",
   "icons": {
@@ -24,7 +24,7 @@
     "persistent": true
   },
   "browser_action": {
-    "default_title": "Seitenprüfer",
+    "default_title": "n274 Secure Check",
     "default_popup": "popup/popup.html",
     "default_icon": "icons/icon.svg"
   },

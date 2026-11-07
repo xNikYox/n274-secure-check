@@ -46,7 +46,7 @@ async function check() {
   const res = await browser.runtime.sendMessage({ type: "analyze", tabId });
   if (res?.report) return render(res.report);
   if (res?.needsReload) {
-    state(`<span>Die Seite wurde geladen, bevor der Seitenprüfer lief. Für Header und Zertifikat einmal neu laden.</span><button class="btn primary" id="reload">Neu laden &amp; prüfen</button>`);
+    state(`<span>Die Seite wurde geladen, bevor n274 Secure Check lief. Für Header und Zertifikat einmal neu laden.</span><button class="btn primary" id="reload">Neu laden &amp; prüfen</button>`);
     document.getElementById("reload").onclick = reloadAndCheck;
     return;
   }
