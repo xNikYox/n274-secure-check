@@ -1,0 +1,18 @@
+{
+  "addons": {
+    "seitenpruefer@xnikyox": {
+      "updates": [
+        {
+          "version": "1.2.1",
+          "update_link": "https://github.com/xNikYox/n274-secure-check/releases/download/v1.2.1/n274-secure-check-1.2.1.xpi",
+          "update_hash": "sha256:f683d15eed345197e13af2618516b4a08c28dd7f073eaa9894e7f87dcf24f1b0",
+          "browser_specific_settings": {
+            "gecko": {
+              "strict_min_version": "115.0"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
