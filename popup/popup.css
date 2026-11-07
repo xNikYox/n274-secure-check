@@ -1,0 +1,22 @@
+body { width: 400px; min-height: 160px; }
+#app { padding: 14px; }
+.state { display: flex; align-items: center; gap: 10px; padding: 30px 6px; color: var(--muted); justify-content: center; text-align: center; flex-direction: column; }
+.spin { width: 22px; height: 22px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: r .8s linear infinite; }
+@keyframes r { to { transform: rotate(360deg); } }
+.head { display: flex; gap: 12px; align-items: center; }
+.head .who { min-width: 0; }
+.head b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.head small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 10px; }
+.scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.counts { display: flex; gap: 12px; margin: 4px 0 10px; color: var(--muted); font-size: 12.5px; }
+.counts span { display: flex; align-items: center; gap: 5px; }
+.counts .dot { margin: 0; }
+.issues { display: flex; flex-direction: column; gap: 6px; }
+.issue { display: flex; gap: 9px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.issue b { font-weight: 600; }
+.issue small { display: block; color: var(--muted); margin-top: 2px; }
+.good { padding: 10px; text-align: center; color: var(--ok); font-weight: 600; }
+.actions { display: flex; gap: 8px; margin-top: 12px; }
+.actions .btn { flex: 1; }
+.foot { margin-top: 10px; font-size: 11.5px; color: var(--muted); text-align: center; }

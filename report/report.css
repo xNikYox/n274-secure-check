@@ -1,0 +1,28 @@
+main { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+.top { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.top .grade { width: 84px; height: 84px; font-size: 38px; border-radius: 20px; }
+.top h1 { margin: 0; font-size: 24px; letter-spacing: -.3px; word-break: break-all; }
+.top .meta { color: var(--muted); margin-top: 3px; word-break: break-all; }
+.top .who { flex: 1; min-width: 240px; }
+.top .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.scores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 12px; }
+.scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.scores b { font-size: 26px; }
+.tech { margin: 6px 0 4px; }
+.filter { display: flex; gap: 6px; margin: 18px 0 6px; flex-wrap: wrap; }
+.filter button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px; color: var(--muted); font-weight: 600; }
+.filter button.on { color: var(--text); border-color: var(--accent); }
+section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 26px 0 8px; display: flex; justify-content: space-between; }
+.item { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 6px; }
+.item summary { list-style: none; display: flex; gap: 10px; padding: 10px 14px; cursor: pointer; align-items: flex-start; }
+.item summary::-webkit-details-marker { display: none; }
+.item summary b { font-weight: 600; flex: 1; }
+.item summary .arrow { color: var(--muted); transition: transform .15s; }
+.item[open] summary .arrow { transform: rotate(90deg); }
+.item .body { padding: 0 14px 12px 33px; }
+.item pre { white-space: pre-wrap; word-break: break-all; margin: 0 0 8px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: var(--muted); background: var(--panel2); padding: 8px 10px; border-radius: 8px; }
+.fix { border-left: 3px solid var(--accent); padding: 4px 10px; background: var(--panel2); border-radius: 0 8px 8px 0; }
+.item.nodetail summary { cursor: default; }
+.item.nodetail .arrow { visibility: hidden; }
+.note { color: var(--muted); font-size: 12.5px; margin-top: 30px; }
+@media (max-width: 640px) { .scores { grid-template-columns: 1fr; } }

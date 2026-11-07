@@ -1,0 +1,15 @@
+{
+  "name": "seitenpruefer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Firefox-Addon: prüft die aktuelle Website auf Sicherheit, Leistung und SEO",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "lint": "web-ext lint --ignore-files test package.json package-lock.json node_modules",
+    "build": "web-ext build --overwrite-dest --ignore-files test package.json package-lock.json node_modules"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0",
+    "web-ext": "^8.0.0"
+  }
+}

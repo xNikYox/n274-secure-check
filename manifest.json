@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "Seitenprüfer",
+  "version": "1.0.0",
+  "description": "Prüft die aktuelle Website: Sicherheit (HTTPS, Zertifikat, Header, Cookies, Skripte), Leistung, SEO und Technik – alles lokal im Browser.",
+  "author": "xNikYox",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "permissions": [
+    "<all_urls>",
+    "webRequest",
+    "webRequestBlocking",
+    "cookies",
+    "tabs",
+    "clipboardWrite"
+  ],
+  "background": {
+    "scripts": [
+      "lib/checks.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "Seitenprüfer",
+    "default_popup": "popup/popup.html",
+    "default_icon": "icons/icon.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "seitenpruefer@xnikyox",
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
+}
