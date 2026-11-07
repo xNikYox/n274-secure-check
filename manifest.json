@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "n274 Secure Check",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Prüft die aktuelle Website: Sicherheit (HTTPS, Zertifikat, Header, Cookies, Skripte), Leistung, SEO und Technik – alles lokal im Browser.",
   "author": "xNikYox",
   "icons": {

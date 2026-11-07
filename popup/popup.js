@@ -20,7 +20,7 @@ function render(r) {
       <div class="grade g-${esc(r.grade)}">${esc(r.grade)}</div>
       <div class="who"><b>${esc(r.host)}</b><small>${esc(r.title || r.url)}</small><small>Sicherheitsnote</small></div>
     </div>
-    <div class="scores">${scoreBox("Sicherheit", r.scores.security)}${scoreBox("Leistung", r.scores.perf)}${scoreBox("SEO", r.scores.seo)}</div>
+    <div class="scores">${scoreBox("Sicherheit", r.scores.security)}${scoreBox("Leistung", r.scores.perf)}${scoreBox("Netzwerk", r.scores.net)}${scoreBox("SEO", r.scores.seo)}</div>
     <div class="counts"><span><i class="dot s-bad"></i>${r.counts.bad} kritisch</span><span><i class="dot s-warn"></i>${r.counts.warn} Hinweise</span><span><i class="dot s-ok"></i>${r.counts.ok} in Ordnung</span></div>
     <div class="issues">${issues.slice(0, 6).map((i) => `<div class="issue"><i class="dot s-${i.status}"></i><div><b>${esc(i.title)}</b>${i.fix ? `<small>${esc(i.fix)}</small>` : ""}</div></div>`).join("") || `<div class="good">Keine Probleme gefunden 🎉</div>`}</div>
     ${issues.length > 6 ? `<div class="foot">+ ${issues.length - 6} weitere im Bericht</div>` : ""}

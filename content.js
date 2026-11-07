@@ -137,6 +137,24 @@
     protocol: nav?.nextHopProtocol || null,
   };
 
+  /* ---- Netzwerk: Resource Timing (Größen, Protokoll) und blockierende Einbindungen im <head> ---- */
+  const resTiming = res.slice(0, 2000).map((e) => ({
+    name: e.name,
+    initiator: e.initiatorType,
+    start: Math.round(e.startTime),
+    duration: Math.round(e.duration),
+    transfer: e.transferSize || 0,
+    encoded: e.encodedBodySize || 0,
+    decoded: e.decodedBodySize || 0,
+    protocol: e.nextHopProtocol || null,
+    blocking: e.renderBlockingStatus || null,
+  }));
+  const blockingScripts = [...document.head.querySelectorAll("script[src]")]
+    .filter((s) => !s.async && !s.defer && s.type !== "module")
+    .map((s) => abs(s.getAttribute("src")))
+    .slice(0, 30);
+  const headStyles = document.head.querySelectorAll('link[rel~="stylesheet"]').length;
+
   /* ---- SEO ---- */
   const structuredData = [];
   for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
@@ -170,5 +188,9 @@
     images: images.map(({ alt, ...i }) => i),
     timing,
     resources,
+    resTiming,
+    blockingScripts,
+    headStyles,
+    timeOrigin: safe(() => performance.timeOrigin, null),
   };
 })();

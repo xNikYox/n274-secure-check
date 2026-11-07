@@ -2,11 +2,14 @@
 // und erstellt auf Abruf den Bericht. Alles bleibt lokal; abgerufen wird nur die geprüfte Seite selbst.
 "use strict";
 
-const tabs = new Map(); // tabId → { main, chain, requests, redirecting, report }
+const tabs = new Map(); // tabId → { main, chain, net, redirecting, report, navStart }
+const pending = new Map(); // requestId → Eintrag im Netzwerk-Protokoll
 const MAX_REQUESTS = 3000;
+const SUB_TYPES = ["sub_frame", "stylesheet", "script", "image", "imageset", "font", "object", "xmlhttprequest", "ping", "beacon", "media", "websocket", "csp_report", "speculative", "web_manifest", "other"];
+const KEEP_HEADERS = ["content-type", "content-length", "content-encoding", "cache-control", "expires", "etag", "last-modified", "age", "x-cache", "cf-cache-status", "access-control-allow-origin", "timing-allow-origin"];
 
-function fresh() {
-  return { main: null, chain: [], requests: [], redirecting: false, report: null };
+function fresh(navStart = Date.now()) {
+  return { main: null, chain: [], net: [], redirecting: false, report: null, navStart };
 }
 
 /* ---------------- Aufzeichnen ---------------- */
@@ -14,8 +17,60 @@ browser.webRequest.onBeforeRequest.addListener((d) => {
   if (d.tabId < 0) return;
   const rec = tabs.get(d.tabId);
   if (rec && rec.redirecting) rec.redirecting = false; // gehört noch zur selben Navigation
-  else tabs.set(d.tabId, fresh());
+  else {
+    if (rec) for (const e of rec.net) if (e.id !== d.requestId) pending.delete(e.id); // alte Seite vergessen
+    tabs.set(d.tabId, fresh(d.timeStamp));
+  }
 }, { urls: ["<all_urls>"], types: ["main_frame"] });
+
+/* ---- Netzwerk-Protokoll: jede Anfrage des Tabs mit Zeiten, Status, Headern, Fehlern ---- */
+browser.webRequest.onBeforeRequest.addListener((d) => {
+  if (d.tabId < 0 || pending.has(d.requestId)) return; // Weiterleitung: gleiche requestId, Eintrag besteht schon
+  const rec = tabs.get(d.tabId);
+  if (!rec || rec.net.length >= MAX_REQUESTS) return;
+  const e = { id: d.requestId, url: d.url, method: d.method, type: d.type, start: d.timeStamp, status: null, end: null, headersAt: null, fromCache: false, ip: null, error: null, redirects: [], h: {} };
+  rec.net.push(e);
+  pending.set(d.requestId, e);
+}, { urls: ["<all_urls>"], types: ["main_frame", ...SUB_TYPES] });
+
+browser.webRequest.onBeforeRedirect.addListener((d) => {
+  const e = pending.get(d.requestId);
+  if (e) {
+    e.redirects.push({ status: d.statusCode, from: d.url, to: d.redirectUrl });
+    e.url = d.redirectUrl;
+  }
+}, { urls: ["<all_urls>"] });
+
+browser.webRequest.onHeadersReceived.addListener((d) => {
+  const e = pending.get(d.requestId);
+  if (!e) return;
+  e.status = d.statusCode;
+  e.headersAt = d.timeStamp;
+  e.ip = d.ip || e.ip;
+  e.h = {};
+  for (const { name, value } of d.responseHeaders || []) {
+    const k = name.toLowerCase();
+    if (KEEP_HEADERS.includes(k)) e.h[k] = value;
+  }
+}, { urls: ["<all_urls>"] }, ["responseHeaders"]);
+
+browser.webRequest.onCompleted.addListener((d) => {
+  const e = pending.get(d.requestId);
+  if (!e) return;
+  e.end = d.timeStamp;
+  e.status = d.statusCode;
+  e.fromCache = !!d.fromCache;
+  e.ip = d.ip || e.ip;
+  pending.delete(d.requestId);
+}, { urls: ["<all_urls>"] });
+
+browser.webRequest.onErrorOccurred.addListener((d) => {
+  const e = pending.get(d.requestId);
+  if (!e) return;
+  e.end = d.timeStamp;
+  e.error = d.error;
+  pending.delete(d.requestId);
+}, { urls: ["<all_urls>"] });
 
 browser.webRequest.onBeforeRedirect.addListener((d) => {
   const rec = tabs.get(d.tabId);
@@ -39,13 +94,11 @@ browser.webRequest.onHeadersReceived.addListener(async (d) => {
   return {};
 }, { urls: ["<all_urls>"], types: ["main_frame"] }, ["blocking", "responseHeaders"]);
 
-browser.webRequest.onHeadersReceived.addListener((d) => {
-  const rec = tabs.get(d.tabId);
-  if (!rec || rec.requests.length >= MAX_REQUESTS) return;
-  rec.requests.push({ url: d.url, type: d.type, status: d.statusCode, ip: d.ip || null });
-}, { urls: ["<all_urls>"], types: ["sub_frame", "stylesheet", "script", "image", "font", "object", "xmlhttprequest", "ping", "media", "websocket", "other"] });
-
-browser.tabs.onRemoved.addListener((id) => tabs.delete(id));
+browser.tabs.onRemoved.addListener((id) => {
+  const rec = tabs.get(id);
+  if (rec) for (const e of rec.net) pending.delete(e.id);
+  tabs.delete(id);
+});
 
 /** Nur das Nötige vom Zertifikat behalten */
 function slimSecurity(s) {
@@ -126,7 +179,9 @@ async function analyze(tabId) {
     headers: rec.main.headers,
     security: rec.main.security,
     chain: rec.chain,
-    requests: rec.requests,
+    requests: rec.net.filter((e) => e.type !== "main_frame").map((e) => ({ url: e.url, type: e.type, status: e.status, ip: e.ip })),
+    net: rec.net.map(({ id, ...e }) => e),
+    navStart: rec.navStart,
     page: result || {},
     cookies: cookies.map((c) => ({ name: c.name, secure: c.secure, httpOnly: c.httpOnly, sameSite: c.sameSite, session: c.session })),
     wellKnown: wk,

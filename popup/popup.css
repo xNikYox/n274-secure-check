@@ -7,8 +7,8 @@ body { width: 400px; min-height: 160px; }
 .head .who { min-width: 0; }
 .head b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .head small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 10px; }
-.scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 14px 0 10px; }
+.scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 8px; }
 .counts { display: flex; gap: 12px; margin: 4px 0 10px; color: var(--muted); font-size: 12.5px; }
 .counts span { display: flex; align-items: center; gap: 5px; }
 .counts .dot { margin: 0; }

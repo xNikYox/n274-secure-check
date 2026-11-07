@@ -131,3 +131,67 @@ test("Markdown-Bericht enthält Note, Probleme und Tipps", () => {
   assert.match(md, /⚠️ \*\*Kein HSTS/);
   assert.match(md, /👉 Header setzen: Strict-Transport-Security/);
 });
+
+test("Netzwerk: Protokoll + Resource Timing zusammengeführt, Fehler, langsam, groß, Cache, Komprimierung", () => {
+  const T0 = 1_000_000;
+  const req = (url, type, o = {}) => ({ url, method: "GET", type, start: T0 + (o.at || 0), end: T0 + (o.at || 0) + (o.ms ?? 50), headersAt: T0 + (o.at || 0) + 20, status: o.status ?? 200, fromCache: !!o.cache, error: o.error || null, redirects: o.redirects || [], h: o.h || {} });
+  const net = [
+    req("https://example.de/", "main_frame", { h: { "content-type": "text/html", "content-encoding": "br" } }),
+    req("https://example.de/app.js", "script", { at: 100, ms: 1800, h: { "content-type": "application/javascript", "cache-control": "no-cache" } }),
+    req("https://example.de/fehlt.css", "stylesheet", { at: 120, status: 404, h: { "content-type": "text/html" } }),
+    req("https://example.de/logo.png", "image", { at: 150, h: { "cache-control": "max-age=86400", "content-length": "800000" } }),
+    req("https://example.de/logo.png", "image", { at: 160, cache: true }),
+    req("https://example.de/x.png", "image", { at: 170 }),
+    req("https://example.de/x.png", "image", { at: 180 }),
+    req("https://www.google-analytics.com/g/collect", "ping", { at: 200, error: "NS_ERROR_TRACKING_URI" }),
+    req("https://example.de/abgebrochen.js", "script", { at: 210, error: "NS_BINDING_ABORTED" }),
+    req("https://cdn.other.net/big.js", "script", { at: 50, ms: 400, h: { "content-encoding": "gzip" } }),
+  ];
+  const resTiming = [
+    { name: "https://example.de/app.js", transfer: 120000, encoded: 119000, decoded: 119000, protocol: "h2" },
+    { name: "https://cdn.other.net/big.js", transfer: 300000, encoded: 299000, decoded: 900000, protocol: "h2" },
+  ];
+  const r = C.analyze(base({ net, navStart: T0, page: { ...goodPage, resTiming, blockingScripts: ["https://example.de/app.js", "https://a.de/1.js", "https://a.de/2.js"] } }));
+  const n = r.network;
+  assert.equal(n.totals.count, 10);
+  const app = n.requests.find((x) => x.file === "app.js");
+  assert.deepEqual([app.transfer, app.size, app.protocol, app.start, app.duration, app.wait], [120000, 119000, "h2", 100, 1800, 20]);
+  assert.equal(n.requests.find((x) => x.file === "logo.png").transfer, 800000); // aus Content-Length
+  assert.equal(find(r, "net-errors").status, "bad"); // fehlende CSS-Datei
+  assert.match(find(r, "net-errors").detail, /404 · CSS · https:\/\/example\.de\/fehlt\.css/);
+  assert.doesNotMatch(find(r, "net-errors").detail, /abgebrochen|collect/); // Abbruch und Blockade sind keine Fehler der Seite
+  assert.match(find(r, "net-blocked").title, /^1 Anfragen/);
+  assert.match(find(r, "net-slow").detail, /1,8 s · Skript/);
+  assert.match(find(r, "net-big").detail, /big\.js/); // 900 KB entpackt
+  assert.match(find(r, "net-big").detail, /logo\.png/);
+  assert.equal(find(r, "net-compress").status, "warn");
+  assert.match(find(r, "net-compress").detail, /app\.js/);
+  assert.doesNotMatch(find(r, "net-compress").detail, /big\.js/);
+  assert.match(find(r, "net-cache").detail, /no-cache · https:\/\/example\.de\/app\.js/);
+  assert.doesNotMatch(find(r, "net-cache").detail, /logo\.png/);
+  assert.match(find(r, "net-dup").detail, /2× https:\/\/example\.de\/x\.png/);
+  assert.doesNotMatch(find(r, "net-dup").detail, /logo/); // zweites Mal aus dem Cache
+  assert.equal(find(r, "net-blocking").status, "warn");
+  assert.deepEqual(n.domains.map((x) => x.host), ["example.de", "cdn.other.net", "www.google-analytics.com"]); // nach übertragenen Bytes
+  assert.ok(r.scores.net < 60, String(r.scores.net));
+});
+
+test("Netzwerk: saubere Seite ohne Auffälligkeiten", () => {
+  const T0 = 5;
+  const net = [{ url: "https://example.de/", method: "GET", type: "main_frame", start: T0, end: T0 + 80, headersAt: T0 + 40, status: 200, h: { "content-encoding": "br", "content-type": "text/html" } },
+    { url: "https://example.de/a.js", method: "GET", type: "script", start: T0 + 90, end: T0 + 120, status: 200, h: { "content-encoding": "br", "content-type": "text/javascript", "cache-control": "public, max-age=31536000, immutable" } }];
+  const r = C.analyze(base({ net, navStart: T0, page: { ...goodPage, blockingScripts: [] } }));
+  assert.deepEqual(r.items.filter((i) => i.cat === "net" && i.status !== "ok" && i.status !== "info").map((i) => i.id), []);
+  assert.equal(r.scores.net, 100);
+});
+
+test("Netzwerk: unbekannte Größen fremder Server zählen nicht als 0", () => {
+  const net = [{ url: "https://example.de/", method: "GET", type: "main_frame", start: 0, end: 50, status: 200, h: { "content-length": "1000", "content-encoding": "br" } },
+    { url: "https://fonts.gstatic.com/a.woff2", method: "GET", type: "font", start: 60, end: 90, status: 200, h: {} }];
+  const r = C.analyze(base({ net, navStart: 0, page: { ...goodPage, resTiming: [{ name: "https://fonts.gstatic.com/a.woff2", transfer: 0, encoded: 0, decoded: 0 }] } }));
+  const font = r.network.domains.find((d) => d.host === "fonts.gstatic.com");
+  assert.equal(font.bytes, null);
+  assert.equal(r.network.totals.thirdBytes, null);
+  assert.equal(find(r, "net-third").title, "1 Anfragen an fremde Domains");
+  assert.equal(r.network.requests[1].fromCache, false);
+});
