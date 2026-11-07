@@ -14,7 +14,7 @@ IGNORE=(test package.json package-lock.json node_modules web-ext-artifacts READM
 
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 && { echo "Release $TAG gibt es schon – Version erhöhen."; exit 1; }
 npm test >/dev/null
-npx web-ext lint --ignore-files "${IGNORE[@]}" --output json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(j.summary.errors){console.error(j.errors);process.exit(1)}})'
+npx web-ext lint --self-hosted --ignore-files "${IGNORE[@]}" --output json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(j.summary.errors){console.error(j.errors);process.exit(1)}})'
 
 set -a; . ~/.config/amo/keys; set +a
 npx web-ext sign --channel unlisted --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET" --approval-timeout 900000 --timeout 900000 \
