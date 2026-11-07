@@ -14,37 +14,22 @@
   const meta = (sel) => safe(() => document.querySelector(sel)?.getAttribute("content")?.trim() || null);
   const abs = (u) => safe(() => new URL(u, location.href).href, u);
 
-  /* ---- Bibliotheken (Variablen der Seite, sonst Dateiname) ---- */
+  /* ---- Bibliotheken über Variablen der Seite (Pfade aus der Lückendatenbank, vom Hintergrund mitgegeben) ---- */
   const libs = [];
-  const addLib = (name, version, src = null) => {
-    version = str(version);
-    if (version && /^\d+(\.\d+)*/.test(version) && !libs.some((l) => l.name === name)) libs.push({ name, version: version.match(/^\d+(\.\d+)*/)[0], src });
-  };
-  addLib("jQuery", safe(() => w.jQuery.fn.jquery));
-  addLib("jQuery UI", safe(() => w.jQuery.ui.version));
-  addLib("Bootstrap", safe(() => w.bootstrap.Tooltip.VERSION) || safe(() => w.jQuery.fn.tooltip.Constructor.VERSION));
-  if (safe(() => typeof w._.flatMapDeep === "function")) addLib("Lodash", safe(() => w._.VERSION));
-  addLib("Moment.js", safe(() => w.moment.version));
-  addLib("AngularJS", safe(() => w.angular.version.full));
-  addLib("Vue", safe(() => w.Vue.version));
-  addLib("React", safe(() => w.React.version));
-  const scripts = [...document.scripts].map((s) => ({ src: s.src ? abs(s.src) : null, integrity: s.getAttribute("integrity") || null, inline: !s.src }));
-  const FILES = [
-    [/jquery[.-]ui[.-]?v?(\d+\.\d+\.\d+)|jqueryui\/(\d+\.\d+\.\d+)/i, "jQuery UI"],
-    [/jquery[@/.-]v?(\d+\.\d+\.\d+)/i, "jQuery"],
-    [/bootstrap[@/.-]v?(\d+\.\d+\.\d+)/i, "Bootstrap"],
-    [/lodash[@/.-]v?(\d+\.\d+\.\d+)/i, "Lodash"],
-    [/moment[@/.-]v?(\d+\.\d+\.\d+)/i, "Moment.js"],
-    [/angular[.-]?js[@/.-]v?(1\.\d+\.\d+)|angular[@/.-]v?(1\.\d+\.\d+)/i, "AngularJS"],
-    [/vue[@/.-]v?(\d+\.\d+\.\d+)/i, "Vue"],
-  ];
-  for (const s of scripts) {
-    if (!s.src) continue;
-    for (const [re, name] of FILES) {
-      const m = re.exec(s.src);
-      if (m) addLib(name, m[1] || m[2], s.src);
+  const read = (alts, path) => {
+    for (const a of alts) {
+      let v = safe(() => a.split(".").reduce((o, k) => (o == null ? undefined : o[k]), w));
+      if (v == null) continue;
+      for (const k of path) v = safe(() => v[k]);
+      if (typeof v === "string" || typeof v === "number") return String(v);
     }
+    return null;
+  };
+  for (const f of globalThis.__n274FuncPaths || []) {
+    const v = read(f.alts, f.path);
+    if (v && /^\d+(\.\d+)*/.test(v) && !libs.some((l) => l.name === f.lib)) libs.push({ name: f.lib, version: v.match(/^\d+(\.\d+)*[a-z0-9.-]*/i)[0], via: "Variable", src: null });
   }
+  const scripts = [...document.scripts].map((s) => ({ src: s.src ? abs(s.src) : null, integrity: s.getAttribute("integrity") || null, inline: !s.src }));
 
   /* ---- Technik ---- */
   const tech = [];
@@ -68,9 +53,35 @@
   if (anySrc(/cdn\.tailwindcss\.com/)) tech.push("Tailwind CSS");
 
   /* ---- Formulare, Frames ---- */
-  const forms = [...document.forms].slice(0, 50).map((f) => ({ action: abs(f.getAttribute("action") || location.href), method: (f.method || "get").toLowerCase(), password: !!f.querySelector("input[type=password]") }));
-  // Passwortfelder außerhalb von <form> zählen auch
-  if (document.querySelector("input[type=password]") && !forms.some((f) => f.password)) forms.push({ action: location.href, method: "post", password: true });
+  const CSRF = /csrf|xsrf|token|nonce|authenticity|_wpnonce|requestverification|form_key|_token/i;
+  const forms = [...document.forms].slice(0, 50).map((f) => {
+    const pw = f.querySelector("input[type=password]");
+    return {
+      name: f.getAttribute("id") || f.getAttribute("name") || null,
+      action: abs(f.getAttribute("action") || location.href),
+      method: (f.getAttribute("method") || "get").toLowerCase(),
+      password: !!pw,
+      pwAutocomplete: pw ? pw.getAttribute("autocomplete") : null,
+      csrf: [...f.querySelectorAll("input[type=hidden]")].some((i) => CSRF.test(i.name || "") && (i.value || "").length >= 8),
+      upload: !!f.querySelector("input[type=file]"),
+      fields: f.querySelectorAll("input:not([type=hidden]):not([type=submit]), textarea, select").length,
+    };
+  });
+  const loosePassword = [...document.querySelectorAll("input[type=password]")].some((i) => !i.form);
+  // Rechtliches: Links zu Impressum und Datenschutzerklärung
+  const links = [...document.querySelectorAll("a[href]")].slice(0, 3000);
+  const legalLink = (re) => {
+    const a = links.find((l) => re.test((l.textContent || "") + " " + (l.getAttribute("href") || "") + " " + (l.getAttribute("title") || "")));
+    return a ? abs(a.getAttribute("href")) : null;
+  };
+  const legal = { imprint: legalLink(/impressum|imprint|legal[ -]?notice|anbieterkennzeichnung/i), privacy: legalLink(/datenschutz|privacy|dsgvo|gdpr/i) };
+  // Hinweise auf Einwilligungs-Werkzeuge, die ohne Fremdserver laufen
+  const cmpHint = [
+    safe(() => w.BorlabsCookie) && "borlabs-cookie", has("#BorlabsCookieBox, #BorlabsCookieBoxWrap") && "borlabs-cookie",
+    safe(() => w.cmplz_banner || w.complianz) && "complianz", has(".cmplz-cookiebanner") && "complianz",
+    has("#real-cookie-banner, [id^='rcb-']") && "real-cookie-banner", has("#cookie-law-info-bar, .cky-consent-container") && "cookieyes",
+    safe(() => w.klaro) && "klaro", has(".klaro") && "klaro",
+  ].filter(Boolean).join(" ");
   const iframes = [...document.querySelectorAll("iframe[src]")].slice(0, 30).map((f) => abs(f.getAttribute("src")));
 
   /* ---- Kommentare mit heiklen Wörtern ---- */
@@ -179,6 +190,9 @@
     imagesNoAlt: images.filter((i) => !i.alt).length,
     structuredData: structuredData.length ? [...new Set(structuredData)].slice(0, 10) : null,
     forms,
+    loosePassword,
+    legal,
+    cmpHint,
     iframes,
     scripts: scripts.filter((s) => s.src).slice(0, 200),
     inlineScripts: scripts.filter((s) => s.inline).length,

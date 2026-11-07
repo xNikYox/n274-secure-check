@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>n274 Secure Check – Überwachung</title>
+  <link rel="stylesheet" href="../common.css">
+  <link rel="stylesheet" href="watch.css">
+</head>
+<body>
+  <main>
+    <header class="top">
+      <img src="../icons/icon.svg" alt="" width="40" height="40">
+      <div><h1>Überwachung</h1><p class="muted">Deine eigenen Seiten – einmal täglich im Hintergrund geprüft. Bei Problemen meldet sich Firefox.</p></div>
+    </header>
+    <form id="add" class="add">
+      <input id="url" type="text" placeholder="https://meine-seite.de" autocomplete="off" required>
+      <label class="own"><input type="checkbox" id="own" required> Diese Seite gehört mir (oder ich darf sie prüfen)</label>
+      <button class="btn primary">Hinzufügen</button>
+    </form>
+    <p class="muted small">Für überwachte Seiten fragt das Addon gezielt nach Dateien, die nie öffentlich sein sollten (z. B. <code>/.git</code>, <code>/.env</code>, Datenbank-Sicherungen). Deshalb nur eigene Seiten eintragen.</p>
+    <div id="list"></div>
+  </main>
+  <script src="watch.js"></script>
+</body>
+</html>

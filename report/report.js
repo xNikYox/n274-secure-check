@@ -37,14 +37,15 @@ function render() {
       <div class="who"><h1>${esc(r.host)}</h1><div class="meta">${esc(r.url)}</div><div class="meta">Geprüft ${esc(new Date(r.at).toLocaleString("de-DE"))}${r.ip ? " · Server-IP " + esc(r.ip) : ""}${r.status ? " · HTTP " + esc(r.status) : ""}</div></div>
       <div class="tools"><button class="btn" id="copy">Als Markdown kopieren</button><button class="btn" id="json">JSON speichern</button></div>
     </div>
-    <div class="scores">${score("Sicherheit (Note " + esc(r.grade) + ")", r.scores.security)}${score("Leistung", r.scores.perf)}${score("Netzwerk", r.scores.net)}${score("SEO", r.scores.seo)}</div>
+    <div class="scores">${score("Sicherheit (Note " + esc(r.grade) + ")", r.scores.security)}${score("Leistung", r.scores.perf)}${score("Netzwerk", r.scores.net)}${score("SEO", r.scores.seo)}${score("Datenschutz", r.scores.privacy)}</div>
     ${r.tech.length ? `<div class="tech">${r.tech.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : ""}
     <div class="filter">
       ${[["all", "Alle"], ["issues", `Probleme (${r.counts.bad + r.counts.warn})`], ["bad", `Kritisch (${r.counts.bad})`], ["ok", `In Ordnung (${r.counts.ok})`]].map(([k, l]) => `<button data-f="${k}" class="${filter === k ? "on" : ""}">${l}</button>`).join("")}
     </div>
     ${sections || `<p class="muted">Nichts in dieser Auswahl.</p>`}
     ${r.network?.requests?.length ? `<section class="netview"><h2><span>Netzwerk-Analyse</span><span>${r.network.totals.count} Anfragen</span></h2><div id="netview"></div></section>` : ""}
-    <p class="note">n274 Secure Check schaut sich nur an, was die Seite ausliefert (passiv) und ersetzt keinen Penetrationstest: Lücken in der Server-Logik, Datenbank oder Anmeldung findet es nicht. Bibliotheks-Lücken stammen aus einer Liste im Addon.</p>`;
+    <p class="note">${r.own ? "Eigene Seite: zusätzlich auf offene Dateien geprüft. " : ""}Bibliotheks-Lücken: Datenbank von retire.js${r.retireDate ? " (Stand " + esc(new Date(r.retireDate).toLocaleDateString("de-DE")) + ")" : ""}. DSGVO-Hinweise sind keine Rechtsberatung.</p>
+    <p class="note">n274 Secure Check schaut sich nur an, was die Seite ausliefert (passiv) und ersetzt keinen Penetrationstest: Lücken in der Server-Logik, Datenbank oder Anmeldung findet es nicht. </p>`;
   for (const b of app.querySelectorAll("[data-f]")) b.onclick = () => ((filter = b.dataset.f), render());
   if (r.network?.requests?.length) renderNet();
   document.getElementById("copy").onclick = async (e) => {
@@ -65,6 +66,7 @@ function renderNet() {
   const n = report.network;
   const t = n.totals;
   const total = Math.max(1, ...n.requests.map((x) => x.start + (x.duration || 0)));
+  const known = n.requests.some((x) => x.transfer != null || x.size != null); // sonst sind Größen unbekannt, nicht 0
   const counts = Object.fromEntries(GROUPS.map((g) => [g, g === "Alle" ? n.requests.length : n.requests.filter((x) => x.group === g).length]));
   let rows = n.requests.filter((x) => (net.group === "Alle" || x.group === net.group) && (!net.problems || problem(x)) && (!net.q || x.url.toLowerCase().includes(net.q)));
   const key = { start: (x) => x.start, duration: (x) => x.duration ?? 1e12, size: (x) => x.size || x.transfer || 0, status: (x) => x.status || 999 }[net.sort];
@@ -79,7 +81,7 @@ function renderNet() {
   const sortHead = (k, label) => `<th data-sort="${k}" class="${net.sort === k ? "on" : ""}">${label}${net.sort === k ? (net.dir > 0 ? " ▲" : " ▼") : ""}</th>`;
   box.innerHTML = `
     <div class="netsum">
-      <span class="chip">${t.count} Anfragen</span><span class="chip">${fmtBytes(t.transfer)} übertragen</span><span class="chip">${fmtBytes(t.size)} entpackt</span>
+      <span class="chip">${t.count} Anfragen</span>${known ? `<span class="chip">${fmtBytes(t.transfer)} übertragen</span><span class="chip">${fmtBytes(t.size)} entpackt</span>` : `<span class="chip">Größen unbekannt</span>`}
       <span class="chip">${t.cached} aus dem Cache</span><span class="chip">${t.thirdCount} fremd${t.thirdBytes != null ? ` (${fmtBytes(t.thirdBytes)})` : ""}</span>${t.finished != null ? `<span class="chip">fertig nach ${fmtMs(t.finished)}</span>` : ""}
     </div>
     <table class="dom"><thead><tr><th>Domain</th><th>Anfragen</th><th>Übertragen</th><th>Protokoll</th><th>Fehler</th></tr></thead><tbody>

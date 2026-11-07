@@ -17,7 +17,10 @@ const html = `<!doctype html><html lang="de"><head>
   <!-- Zugangsdaten DB: user root, Passwort hunter2 -->
   <!-- normaler Kommentar -->
   <h1>Hallo</h1><h1>Zweite</h1>
-  <form action="http://example.de/login"><input type="password"></form>
+  <form action="http://example.de/login"><input type="password" autocomplete="off"></form>
+  <form method="POST" action="/kontakt"><input name="name"><textarea name="msg"></textarea><input type="hidden" name="_wpnonce" value="a1b2c3d4e5"><input type="file"></form>
+  <footer><a href="/impressum">Impressum</a> · <a href="/privacy-policy">Datenschutz</a></footer>
+  <div id="BorlabsCookieBox"></div>
   <img src="a.png" alt="A"><img src="b.png">
   <iframe src="https://www.youtube.com/embed/x"></iframe>
   <script>var inline = 1;</script>
@@ -29,6 +32,9 @@ test("liest Formulare, Bibliotheken, SEO-Angaben und heikle Kommentare", async (
   // Seite hat jQuery als Variable (wie nach dem Laden)
   w.jQuery = { fn: { jquery: "1.12.4" } };
   w.PerformanceObserver = class { observe() { throw new Error("nicht unterstützt"); } };
+  // Variablen-Pfade aus der Lückendatenbank (macht sonst das Hintergrundskript)
+  const Retire = require("../lib/retire");
+  w.__n274FuncPaths = Retire.funcPaths(require("../lib/retire-db").db);
   const data = JSON.parse(JSON.stringify(await w.eval(code))); // Werte aus dem jsdom-Kontext in normale Objekte
   assert.equal(data.title, "Testseite");
   assert.equal(data.lang, "de");
@@ -39,11 +45,17 @@ test("liest Formulare, Bibliotheken, SEO-Angaben und heikle Kommentare", async (
   assert.deepEqual(data.h1, ["Hallo", "Zweite"]);
   assert.equal(data.imagesTotal, 2);
   assert.equal(data.imagesNoAlt, 1);
-  assert.deepEqual(data.forms, [{ action: "http://example.de/login", method: "get", password: true }]);
+  assert.deepEqual(data.forms, [
+    { name: null, action: "http://example.de/login", method: "get", password: true, pwAutocomplete: "off", csrf: false, upload: false, fields: 1 },
+    { name: null, action: "https://example.de/kontakt", method: "post", password: false, pwAutocomplete: null, csrf: true, upload: true, fields: 3 },
+  ]);
+  assert.deepEqual(data.legal, { imprint: "https://example.de/impressum", privacy: "https://example.de/privacy-policy" });
+  assert.match(data.cmpHint, /borlabs-cookie/);
+  assert.equal(data.loosePassword, false);
   assert.deepEqual(data.iframes, ["https://www.youtube.com/embed/x"]);
   assert.deepEqual(data.structuredData, ["Organization"]);
   assert.equal(data.inlineScripts, 2); // JSON-LD + Inline-Skript
-  assert.deepEqual(data.libs.map((l) => `${l.name} ${l.version}`).sort(), ["Bootstrap 4.1.3", "jQuery 1.12.4"]);
+  assert.deepEqual(data.libs.map((l) => `${l.name} ${l.version} ${l.via}`), ["jquery 1.12.4 Variable"]); // Adresse/Inhalt prüft der Hintergrund
   assert.equal(data.scripts.find((s) => /bootstrap/.test(s.src)).integrity, "sha384-x");
   assert.ok(data.tech.includes("WordPress"));
   assert.equal(data.sensitiveComments.length, 1);

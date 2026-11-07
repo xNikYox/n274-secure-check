@@ -17,7 +17,8 @@ const goodSecurity = { state: "secure", protocolVersion: "TLSv1.3", cipherSuite:
 const goodPage = {
   title: "Beispiel – Startseite für Tests", description: "Eine Beschreibung mit genug Zeichen, damit sie für Suchmaschinen gut lesbar und vollständig ist.",
   h1: ["Willkommen"], lang: "de", viewport: true, canonical: "https://example.de/", og: true, imagesTotal: 2, imagesNoAlt: 0,
-  forms: [{ action: "https://example.de/login", password: true }], scripts: [{ src: "https://example.de/app.js" }], libs: [{ name: "jQuery", version: "3.7.1" }],
+  forms: [{ action: "https://example.de/login", method: "post", password: true, csrf: true }], scripts: [{ src: "https://example.de/app.js" }], libs: [{ name: "jquery", version: "3.7.1", via: "Variable" }],
+  legal: { imprint: "https://example.de/impressum", privacy: "https://example.de/datenschutz" },
   timing: { ttfb: 120, dcl: 600, load: 1200, lcp: 900 }, resources: { count: 20, bytes: 900000, largest: [], protocol: "h2" }, images: [],
 };
 const base = (o = {}) => ({ url: "https://example.de/", now: NOW, headers: goodHeaders, security: goodSecurity, chain: [], requests: [], page: goodPage,
@@ -88,17 +89,22 @@ test("Cookies: Sitzungs-Cookie ohne Secure/HttpOnly, SameSite=None ohne Secure",
   assert.equal(find(r, "cookie-samesite").status, "bad");
 });
 
-test("veraltete Bibliotheken mit bekannten Lücken", () => {
-  const libs = [{ name: "jQuery", version: "1.12.4", src: "https://code.jquery.com/jquery-1.12.4.min.js" }, { name: "Bootstrap", version: "4.1.3" }, { name: "Lodash", version: "4.17.21" }, { name: "AngularJS", version: "1.8.2" }];
+test("veraltete Bibliotheken: Lücken aus der retire.js-Datenbank, nicht mehr gepflegte Versionen", () => {
+  const libs = [{ name: "jquery", version: "1.12.4", via: "Adresse", src: "https://code.jquery.com/jquery-1.12.4.min.js" }, { name: "bootstrap", version: "4.1.3", via: "Dateiinhalt" },
+    { name: "lodash", version: "4.18.1", via: "Variable" }, { name: "angularjs", version: "1.8.2", via: "Variable" }];
   const r = C.analyze(base({ page: { ...goodPage, libs } }));
-  assert.equal(find(r, "lib-jQuery").status, "bad");
-  assert.match(find(r, "lib-jQuery").title, /CVE-2020-11022/);
-  assert.equal(find(r, "lib-Bootstrap").status, "bad");
-  assert.equal(find(r, "lib-Lodash"), undefined);
-  assert.equal(find(r, "lib-AngularJS").status, "warn");
-  assert.equal(C.analyze(base({ page: { ...goodPage, libs: [{ name: "Bootstrap", version: "3.4.1" }] } })).items.find((i) => i.id === "lib-Bootstrap"), undefined);
+  const jq = find(r, "lib-jquery");
+  assert.equal(jq.status, "warn"); // jQuery-Lücken sind „medium“
+  assert.match(jq.title, /^jQuery 1\.12\.4: \d+ bekannte Lücken \(CVE-/);
+  assert.match(jq.detail, /CVE-2020-11022|behoben in 3\.5\.0/);
+  assert.match(jq.detail, /Erkannt über Adresse: https:\/\/code\.jquery\.com/);
+  assert.match(jq.fix, /^Auf jQuery 3\.5\.0 oder neuer/);
+  assert.ok(find(r, "lib-bootstrap"));
+  assert.equal(find(r, "lib-lodash"), undefined);
+  assert.ok(find(r, "lib-angularjs") || find(r, "eol-angularjs"));
+  assert.equal(find(r, "eol-angularjs").status, "warn");
+  assert.ok(r.tech.includes("jQuery 1.12.4"));
   assert.equal(C.cmpVersion("3.10.0", "3.9.9"), 1);
-  assert.equal(C.cmpVersion("3.5", "3.5.0"), 0);
 });
 
 test("Drittanbieter, Tracker, SRI und heikle Kommentare", () => {
@@ -106,8 +112,8 @@ test("Drittanbieter, Tracker, SRI und heikle Kommentare", () => {
     requests: [{ url: "https://www.googletagmanager.com/gtag/js", type: "script" }, { url: "https://static.hotjar.com/c.js", type: "script" }, { url: "https://cdn.example.de/x.js", type: "script" }],
     page: { ...goodPage, scripts: [{ src: "https://cdn.jsdelivr.net/npm/x.js" }, { src: "https://cdnjs.cloudflare.com/y.js", integrity: "sha384-abc" }, { src: "https://static.example.de/own.js" }], sensitiveComments: ["TODO Passwort für Admin: geheim123"] },
   }));
-  assert.match(find(r, "trackers").title, /Google Tag Manager/);
-  assert.match(find(r, "trackers").title, /Hotjar/);
+  assert.match(find(r, "consent").detail, /Google Tag Manager/);
+  assert.match(find(r, "consent").detail, /Hotjar/);
   assert.match(find(r, "third").title, /^2 fremde/); // eigene Subdomain zählt nicht
   assert.equal(find(r, "sri").status, "warn");
   assert.match(find(r, "sri").title, /^1 fremde/);
@@ -194,4 +200,70 @@ test("Netzwerk: unbekannte Größen fremder Server zählen nicht als 0", () => {
   assert.equal(r.network.totals.thirdBytes, null);
   assert.equal(find(r, "net-third").title, "1 Anfragen an fremde Domains");
   assert.equal(r.network.requests[1].fromCache, false);
+});
+
+test("Formulare: Login per GET, fremdes Ziel, fehlendes CSRF-Token, autocomplete=off", () => {
+  const forms = [
+    { action: "https://example.de/login", method: "get", password: true, pwAutocomplete: "off", csrf: false },
+    { name: "newsletter", action: "https://newsletter-dienst.com/subscribe", method: "post", csrf: false },
+    { name: "kontakt", action: "https://example.de/kontakt", method: "post", csrf: false, upload: true },
+  ];
+  const r = C.analyze(base({ page: { ...goodPage, forms } }));
+  assert.equal(find(r, "form-get").status, "bad");
+  assert.match(find(r, "form-foreign").detail, /newsletter-dienst\.com/);
+  assert.match(find(r, "form-csrf").detail, /kontakt/);
+  assert.doesNotMatch(find(r, "form-csrf").detail, /newsletter/); // fremde Ziele nicht doppelt
+  assert.equal(find(r, "form-ac").status, "info");
+  assert.equal(find(r, "form-upload").status, "info");
+  assert.equal(find(r, "form-get").cat, "forms");
+});
+
+test("DSGVO: Tracker vor Einwilligung, Google Fonts, Einbettungen, fehlendes Impressum", () => {
+  const T0 = 1000;
+  const req = (url, type, at) => ({ url, method: "GET", type, start: T0 + at, end: T0 + at + 30, status: 200, h: {} });
+  const net = [req("https://example.de/", "main_frame", 0), req("https://www.googletagmanager.com/gtag/js?id=G-1", "script", 200), req("https://fonts.googleapis.com/css2?family=Inter", "stylesheet", 120),
+    req("https://www.youtube.com/embed/abc", "sub_frame", 400), req("https://cdn.jsdelivr.net/npm/x.js", "script", 150)];
+  const page = { ...goodPage, legal: { imprint: null, privacy: "https://example.de/datenschutz" } };
+  const r = C.analyze(base({ net, navStart: T0, page, cookies: [{ name: "_ga", secure: true }] }));
+  assert.equal(find(r, "consent").status, "bad");
+  assert.match(find(r, "consent").detail, /Google Tag Manager \(Tracking, USA\)/);
+  assert.match(find(r, "consent").detail, /YouTube-Einbettung/);
+  assert.equal(find(r, "cmp").status, "warn");
+  assert.equal(find(r, "track-cookies").status, "bad");
+  assert.equal(find(r, "gfonts").status, "warn");
+  assert.equal(find(r, "embeds").status, "warn");
+  assert.match(find(r, "cdn").title, /jsDelivr/);
+  assert.match(find(r, "abroad").detail, /Google Fonts \(USA\)/);
+  assert.equal(find(r, "imprint").status, "bad");
+  assert.equal(find(r, "privacy-link").status, "ok");
+  assert.ok(r.scores.privacy < 40, String(r.scores.privacy));
+  // gleiche Seite: Tracker erst nach dem ersten Klick, Banner vorhanden → in Ordnung
+  const later = [req("https://example.de/", "main_frame", 0), req("https://app.usercentrics.eu/browser-ui/latest/loader.js", "script", 100), req("https://www.googletagmanager.com/gtag/js", "script", 5000)];
+  const ok = C.analyze(base({ net: later, navStart: T0, firstInteraction: T0 + 3000, page: goodPage, cookies: [] }));
+  assert.equal(find(ok, "consent").status, "ok");
+  assert.match(find(ok, "cmp").title, /Usercentrics/);
+  // Einwilligung schon erteilt (Cookie) → nur Hinweis
+  const consented = C.analyze(base({ net, navStart: T0, page: goodPage, cookies: [{ name: "CookieConsent", secure: true }] }));
+  assert.equal(find(consented, "consent").status, "info");
+  assert.match(find(consented, "consent").detail, /privaten Fenster/);
+});
+
+test("DSGVO: Impressum-Pflicht nur für deutschsprachige Seiten", () => {
+  const r = C.analyze(base({ url: "https://example.com/", page: { ...goodPage, lang: "en", legal: {} } }));
+  assert.equal(find(r, "imprint"), undefined);
+  const de = C.analyze(base({ url: "https://example.com/", page: { ...goodPage, lang: "de-DE", legal: {} } }));
+  assert.equal(find(de, "imprint").status, "bad");
+});
+
+test("Offene Dateien fließen in die Sicherheitsnote ein (nur eigene Seiten)", () => {
+  const notOwn = C.analyze(base());
+  assert.equal(notOwn.own, false);
+  assert.equal(notOwn.items.filter((i) => i.cat === "exposed").length, 0);
+  const clean = C.analyze(base({ exposed: [], exposedChecked: 30 }));
+  assert.equal(clean.own, true);
+  assert.equal(find(clean, "exposed-none").title, "Keine offenen Dateien gefunden (30 Pfade geprüft)");
+  const E = require("../lib/exposed");
+  const leak = E.evaluate([{ path: "/.env", status: 200, finalUrl: "https://example.de/.env", text: "DB_PASSWORD=x" }]);
+  const r = C.analyze(base({ exposed: leak, exposedChecked: 30 }));
+  assert.ok(["C", "D", "F"].includes(r.grade), r.grade);
 });

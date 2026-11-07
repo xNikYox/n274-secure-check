@@ -9,7 +9,7 @@ const SUB_TYPES = ["sub_frame", "stylesheet", "script", "image", "imageset", "fo
 const KEEP_HEADERS = ["content-type", "content-length", "content-encoding", "cache-control", "expires", "etag", "last-modified", "age", "x-cache", "cf-cache-status", "access-control-allow-origin", "timing-allow-origin"];
 
 function fresh(navStart = Date.now()) {
-  return { main: null, chain: [], net: [], redirecting: false, report: null, navStart };
+  return { main: null, chain: [], net: [], redirecting: false, report: null, navStart, firstInteraction: null };
 }
 
 /* ---------------- Aufzeichnen ---------------- */
@@ -166,13 +166,19 @@ async function analyze(tabId) {
   const rec = tabs.get(tabId);
   const sameDoc = rec?.main && sameOrigin(rec.main.url, tab.url);
   if (!sameDoc) return { needsReload: true };
+  // Variablen-Pfade für die Bibliotheks-Erkennung mitgeben (gleicher Bereich wie content.js)
+  await browser.tabs.executeScript(tabId, { code: `globalThis.__n274FuncPaths = ${JSON.stringify(FUNC_PATHS)};`, runAt: "document_idle" });
   const [result] = await browser.tabs.executeScript(tabId, { file: "/content.js", runAt: "document_idle" });
   const origin = new URL(tab.url).origin;
-  const [cookies, wk, redir] = await Promise.all([
+  const own = await isOwn(tab.url);
+  const [cookies, wk, redir, libs, exposed] = await Promise.all([
     browser.cookies.getAll({ url: tab.url }).catch(() => []),
     wellKnown(origin),
     /^https:/i.test(tab.url) ? httpRedirect(new URL(tab.url).host) : Promise.resolve(null),
+    scanLibraries(result?.scripts || []),
+    own ? probeExposed(origin) : Promise.resolve(null),
   ]);
+  if (result) result.libs = Retire.merge([...(result.libs || []), ...libs]);
   const report = Checks.analyze({
     url: tab.url,
     now: Date.now(),
@@ -186,6 +192,9 @@ async function analyze(tabId) {
     cookies: cookies.map((c) => ({ name: c.name, secure: c.secure, httpOnly: c.httpOnly, sameSite: c.sameSite, session: c.session })),
     wellKnown: wk,
     httpRedirect: redir,
+    firstInteraction: rec.firstInteraction,
+    exposed: exposed ? exposed.items : null,
+    exposedChecked: exposed ? exposed.checked : 0,
   });
   report.ip = rec.main.ip;
   report.status = rec.main.status;
@@ -202,7 +211,94 @@ function sameOrigin(a, b) {
   }
 }
 
-browser.runtime.onMessage.addListener((msg) => {
+/* ---------------- Bibliotheken: Adresse, Dateiname und Inhalt der Skripte ---------------- */
+const FUNC_PATHS = Retire.funcPaths(RETIRE_DB);
+
+async function scanLibraries(scripts) {
+  const found = [];
+  const srcs = [...new Set(scripts.map((s) => s.src).filter((u) => /^https?:/i.test(u || "")))];
+  for (const u of srcs) found.push(...Retire.fromUrl(RETIRE_DB, u));
+  // Inhalt der ersten 25 Skripte (meist schon im Cache) nach Versions-Kommentaren durchsuchen
+  await pool(srcs.slice(0, 25), 4, async (u) => {
+    try {
+      const r = await probe(u, { cache: "force-cache" });
+      if (!r.ok) return;
+      const text = await readText(r, 1_500_000);
+      found.push(...Retire.fromContent(RETIRE_DB, text, u));
+    } catch {
+      // nicht erreichbar
+    }
+  });
+  return found;
+}
+
+async function pool(items, n, fn) {
+  const queue = [...items];
+  await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => {
+    while (queue.length) await fn(queue.shift());
+  }));
+}
+
+/** Höchstens max Bytes einer Antwort lesen (als Latin-1, damit Binärdateien erkennbar bleiben) */
+async function readText(res, max) {
+  const reader = res.body?.getReader();
+  if (!reader) return "";
+  const parts = [];
+  let size = 0;
+  while (size < max) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value);
+    size += value.length;
+  }
+  reader.cancel().catch(() => {});
+  const all = new Uint8Array(Math.min(size, max));
+  let o = 0;
+  for (const p of parts) {
+    all.set(p.subarray(0, Math.min(p.length, all.length - o)), o);
+    o += p.length;
+    if (o >= all.length) break;
+  }
+  return new TextDecoder("latin1").decode(all);
+}
+
+/* ---------------- Offene Dateien (nur eigene Seiten aus der Überwachung) ---------------- */
+const exposedCache = new Map(); // origin → { at, result }
+
+async function probeExposed(origin, fresh = false) {
+  const c = exposedCache.get(origin);
+  if (!fresh && c && Date.now() - c.at < 10 * 60 * 1000) return c.result;
+  const results = [];
+  await pool(Exposed.paths(), 4, async (path) => {
+    try {
+      const r = await probe(origin + path, { redirect: "follow" });
+      results.push({ path, status: r.status, finalUrl: r.url, text: r.status === 200 ? await readText(r, 65536) : "" });
+    } catch {
+      results.push({ path, status: 0, finalUrl: null, text: "" });
+    }
+  });
+  const result = { items: Exposed.evaluate(results), checked: results.length };
+  exposedCache.set(origin, { at: Date.now(), result });
+  return result;
+}
+
+async function isOwn(url) {
+  try {
+    const host = new URL(url).host;
+    const { watch = [] } = await browser.storage.local.get("watch");
+    return watch.some((w) => new URL(w.url).host === host);
+  } catch {
+    return false;
+  }
+}
+
+browser.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type === "interaction") {
+    const rec = sender.tab && sender.frameId === 0 ? tabs.get(sender.tab.id) : null;
+    if (rec && rec.firstInteraction == null && rec.main && sameOrigin(rec.main.url, sender.url || "")) rec.firstInteraction = msg.at;
+    return undefined;
+  }
+  if (msg?.type === "isOwn") return isOwn(msg.url);
   if (msg?.type === "analyze") return analyze(msg.tabId).catch((e) => ({ error: String(e.message || e) }));
   if (msg?.type === "report") return Promise.resolve({ report: tabs.get(msg.tabId)?.report || null });
   if (msg?.type === "reload") return browser.tabs.reload(msg.tabId, { bypassCache: true }).then(() => ({ ok: true }));

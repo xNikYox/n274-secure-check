@@ -7,8 +7,9 @@ body { width: 400px; min-height: 160px; }
 .head .who { min-width: 0; }
 .head b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .head small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 14px 0 10px; }
-.scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 8px; }
+.scores { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 14px 0 10px; }
+.scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 7px; }
+.scores small { font-size: 10.5px; }
 .counts { display: flex; gap: 12px; margin: 4px 0 10px; color: var(--muted); font-size: 12.5px; }
 .counts span { display: flex; align-items: center; gap: 5px; }
 .counts .dot { margin: 0; }
@@ -20,3 +21,7 @@ body { width: 400px; min-height: 160px; }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
 .actions .btn { flex: 1; }
 .foot { margin-top: 10px; font-size: 11.5px; color: var(--muted); text-align: center; }
+.watchrow { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+.ownchip { color: var(--ok); font-size: 12px; font-weight: 600; }
+.link { background: none; border: 0; color: var(--accent); padding: 0; font-weight: 600; font-size: 12.5px; }
+.link:hover { text-decoration: underline; }

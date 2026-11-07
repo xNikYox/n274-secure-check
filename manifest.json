@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "n274 Secure Check",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Prüft die aktuelle Website: Sicherheit (HTTPS, Zertifikat, Header, Cookies, Skripte), Leistung, SEO und Technik – alles lokal im Browser.",
   "author": "xNikYox",
   "icons": {
@@ -14,12 +14,19 @@
     "webRequestBlocking",
     "cookies",
     "tabs",
-    "clipboardWrite"
+    "clipboardWrite",
+    "storage",
+    "alarms",
+    "notifications"
   ],
   "background": {
     "scripts": [
+      "lib/retire-db.js",
+      "lib/retire.js",
+      "lib/exposed.js",
       "lib/checks.js",
-      "background.js"
+      "background.js",
+      "watch.js"
     ],
     "persistent": true
   },
@@ -38,5 +45,16 @@
         ]
       }
     }
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "interaction.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
 }

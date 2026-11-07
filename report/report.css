@@ -5,7 +5,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
 .top .meta { color: var(--muted); margin-top: 3px; word-break: break-all; }
 .top .who { flex: 1; min-width: 240px; }
 .top .tools { display: flex; gap: 8px; flex-wrap: wrap; }
-.scores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 22px 0 12px; }
+.scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 22px 0 12px; }
 .scores > div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .scores b { font-size: 26px; }
 .tech { margin: 6px 0 4px; }

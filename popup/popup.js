@@ -20,7 +20,7 @@ function render(r) {
       <div class="grade g-${esc(r.grade)}">${esc(r.grade)}</div>
       <div class="who"><b>${esc(r.host)}</b><small>${esc(r.title || r.url)}</small><small>Sicherheitsnote</small></div>
     </div>
-    <div class="scores">${scoreBox("Sicherheit", r.scores.security)}${scoreBox("Leistung", r.scores.perf)}${scoreBox("Netzwerk", r.scores.net)}${scoreBox("SEO", r.scores.seo)}</div>
+    <div class="scores">${scoreBox("Sicherheit", r.scores.security)}${scoreBox("Leistung", r.scores.perf)}${scoreBox("Netzwerk", r.scores.net)}${scoreBox("SEO", r.scores.seo)}${scoreBox("DSGVO", r.scores.privacy)}</div>
     <div class="counts"><span><i class="dot s-bad"></i>${r.counts.bad} kritisch</span><span><i class="dot s-warn"></i>${r.counts.warn} Hinweise</span><span><i class="dot s-ok"></i>${r.counts.ok} in Ordnung</span></div>
     <div class="issues">${issues.slice(0, 6).map((i) => `<div class="issue"><i class="dot s-${i.status}"></i><div><b>${esc(i.title)}</b>${i.fix ? `<small>${esc(i.fix)}</small>` : ""}</div></div>`).join("") || `<div class="good">Keine Probleme gefunden 🎉</div>`}</div>
     ${issues.length > 6 ? `<div class="foot">+ ${issues.length - 6} weitere im Bericht</div>` : ""}
@@ -29,7 +29,13 @@ function render(r) {
       <button class="btn" id="copy" title="Als Markdown-Liste kopieren">Kopieren</button>
       <button class="btn" id="again" title="Seite neu laden und erneut prüfen">↻</button>
     </div>
+    <div class="watchrow">${r.own ? `<span class="ownchip">✓ Eigene Seite · überwacht</span>` : ""}<button class="link" id="watch">${r.own ? "Überwachung öffnen" : "Diese Seite überwachen …"}</button></div>
     <div class="foot">Alles lokal geprüft – keine Daten verlassen deinen Browser.</div>`;
+  document.getElementById("watch").onclick = () => {
+    const page = "watch/watch.html" + (r.own ? "" : "?add=" + encodeURIComponent(new URL(r.url).origin + "/"));
+    browser.tabs.create({ url: browser.runtime.getURL(page) });
+    window.close();
+  };
   document.getElementById("full").onclick = () => {
     browser.tabs.create({ url: browser.runtime.getURL(`report/report.html?tab=${tabId}`) });
     window.close();

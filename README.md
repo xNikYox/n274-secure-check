@@ -10,3 +10,11 @@ Prüft die Website im aktuellen Tab – passiv und komplett lokal:
 Bericht als Markdown kopieren oder als JSON speichern. Keine Daten verlassen den Browser; abgerufen werden nur `security.txt`, `robots.txt`, `sitemap.xml` und die HTTP-Version der geprüften Seite.
 
 Entwicklung: `npm test` · `npm run lint` · `npm run build`
+
+## Ab 1.2
+
+- **Überwachung** eigener Seiten (täglich): Status, Zertifikat, Sicherheits-Header, HTTP→HTTPS, kaputte Links, offene Dateien – mit Vergleich zum letzten Stand und Firefox-Hinweis
+- **Offene Dateien** (nur überwachte, also eigene Seiten): `.git`, `.env`, Konfig-/Datenbank-Sicherungen, phpinfo, Verzeichnislisten, WordPress-Benutzerliste u. a. – erkannt am Inhalt, keine Fehlalarme bei „alles ist 200“
+- **DSGVO**: Tracker/Einbettungen vor Einwilligung, Cookie-Banner, Tracking-Cookies, Google Fonts, CDNs, Drittland-Übermittlung, Impressum/Datenschutz-Link
+- **Bibliotheken**: Lückendatenbank von retire.js (Apache 2.0, `lib/retire-LICENSE.txt`), aktualisieren mit `node scripts/update-retire.js`
+- **Formulare**: Login per GET, fremde Ziele, CSRF-Token, autocomplete
